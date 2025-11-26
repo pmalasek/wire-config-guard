@@ -5,6 +5,6 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    url: './database/wire_config_guard.db',
+    url: process.env.DB_PATH || './database/wire_config_guard.db',
   },
 });
