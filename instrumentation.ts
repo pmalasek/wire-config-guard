@@ -1,3 +1,13 @@
+// Definice typu pro TypeScript
+declare global {
+  var mojePromenna: string | undefined;
+  // nebo složitější objekt
+  var config: {
+    initialized: boolean;
+    data: any;
+  } | undefined;
+}
+
 export async function register() {
     console.log("*".repeat(80));
     console.log("*".repeat(80));
@@ -13,4 +23,5 @@ export async function register() {
     }
     console.log("*".repeat(80));
     console.log("*".repeat(80));
+    globalThis.mojePromenna = "hodnota_xxx";
 }
