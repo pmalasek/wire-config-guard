@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run db/migrate.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "drizzle": "^1.4.0",
     "drizzle-orm": "^0.44.7",
     "next": "16.0.4",
