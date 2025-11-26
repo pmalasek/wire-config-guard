@@ -1,6 +1,6 @@
 'use client';
-import { activeConnections, generatePeerKeys, loadWgConfiguration } from "./actions/wg_actions";
-import { generateIPs } from "./actions/net_actions";
+import { activeConnections, generatePeerKeys, loadWgConfiguration } from "../../../actions/wg_actions";
+import { generateIPs } from "@/actions/net_actions";
 import React from "react";
 
 export default function Home() {
@@ -17,7 +17,7 @@ export default function Home() {
         <button
           onClick={async () => {
             const result = await activeConnections();
-            setActiveCons(JSON.stringify(result, null,2))  ;
+            setActiveCons(JSON.stringify(result, null, 2));
           }}
           className="mb-32 rounded-full bg-blue-500 px-5 py-3 font-medium text-white hover:bg-blue-600"
         >
@@ -26,8 +26,6 @@ export default function Home() {
         {/* <pre>{privateKey} - {publicKey}</pre> */}
         {/* <pre>Moje Proměnná : {globalThis.mojePromenna}</pre> */}
         <pre>{activeCons}</pre>
-      
-        
       </main>
     </div>
   );
