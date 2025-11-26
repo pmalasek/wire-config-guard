@@ -2,6 +2,7 @@
 import { activeConnections, generatePeerKeys, loadWgConfiguration } from "../../../actions/wg_actions";
 import { generateIPs } from "@/actions/net_actions";
 import React from "react";
+import axios from "axios";
 
 export default function Home() {
   const [activeCons, setActiveCons] = React.useState<string>("");
@@ -16,8 +17,8 @@ export default function Home() {
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
         <button
           onClick={async () => {
-            const result = await activeConnections();
-            setActiveCons(JSON.stringify(result, null, 2));
+            const result = await axios.get('/api/wg');
+            setActiveCons(JSON.stringify(result.data, null, 2));
           }}
           className="mb-32 rounded-full bg-blue-500 px-5 py-3 font-medium text-white hover:bg-blue-600"
         >

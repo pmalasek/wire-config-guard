@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "drizzle": "^1.4.0",
     "drizzle-orm": "^0.44.7",
