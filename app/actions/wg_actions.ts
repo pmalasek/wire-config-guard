@@ -51,88 +51,6 @@ interface WireGuardInterface {
     peers: Peer[];
 }
 
-export async function activeConnections() {
-    try {
-        const { stdout: _res } = await execAsync('wg show all dump');
-        
-        const _result: { interfaces: WireGuardInterface[] } = { interfaces: [] };
-        const interfacesMap = new Map<string, WireGuardInterface>();
-        
-        const lines = _res.split('\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-            const columns = line.split('\t');
-            
-            if (columns.length === 5) {
-                // Interface line: interface, private-key, public-key, listen-port, fwmark
-                const [name, privateKey, publicKey, listenPort, fwmark] = columns;
-                interfacesMap.set(name, {
-                    name,
-                    privateKey,
-                    publicKey,
-                    listenPort: parseInt(listenPort),
-                    fwmark,
-                    peers: []
-                });
-            } else if (columns.length === 9) {
-                // Peer line: interface, public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive
-                const [interfaceName, publicKey, presharedKey, endpoint, allowedIps, latestHandshake, transferRx, transferTx, persistentKeepalive] = columns;
-                
-                const iface = interfacesMap.get(interfaceName);
-                if (iface) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const handshakeTimestamp = parseInt(latestHandshake);
-                    const timeSinceHandshake = now - handshakeTimestamp;
-                    
-                    iface.peers.push({
-                        publicKey,
-                        presharedKey,
-                        endpoint,
-                        allowedIps,
-                        latestHandshake: handshakeTimestamp,
-                        transferRx: parseInt(transferRx),
-                        transferTx: parseInt(transferTx),
-                        persistentKeepalive,
-                        active: handshakeTimestamp > 0 && timeSinceHandshake <= 180
-                    });
-                }
-            }
-        }
-        
-        _result.interfaces = Array.from(interfacesMap.values());
-        
-        return _result;
-    } catch (error) {
-        console.error('Error executing wg show all dump:', error);
-        throw error;
-    }
-}
-
-export async function loadWgConfiguration(): Promise<WireGuardConfig[]> {
-    const configDir = '/etc/wireguard';
-    const configs: WireGuardConfig[] = [];
-
-    try {
-        // Najít všechny .conf soubory
-        const files = await readdir(configDir);
-        const confFiles = files.filter(f => f.endsWith('.conf'));
-
-        // Zpracovat každý soubor
-        for (const filename of confFiles) {
-            const filePath = join(configDir, filename);
-            const content = await readFile(filePath, 'utf-8');
-            
-            const config = parseWireGuardConfig(filename, content);
-            configs.push(config);
-        }
-
-        return configs;
-    } catch (error) {
-        console.error('Error loading WireGuard configurations:', error);
-        throw error;
-    }
-}
-
 function parseWireGuardConfig(filename: string, content: string): WireGuardConfig {
     const config: WireGuardConfig = {
         filename,
@@ -226,4 +144,123 @@ function parseWireGuardConfig(filename: string, content: string): WireGuardConfi
     }
 
     return config;
+}
+
+/**
+ * Načte informace o aktivních WireGuard připojeních
+ * Spouští příkaz 'wg show all dump' a parsuje výstup
+ * @returns Objekt s polem interfaces obsahujícím všechny WireGuard rozhraní a jejich peery
+ * @throws Error při selhání příkazu wg
+ */
+export async function activeConnections() {
+    try {
+        const { stdout: _res } = await execAsync('wg show all dump');
+        
+        const _result: { interfaces: WireGuardInterface[] } = { interfaces: [] };
+        const interfacesMap = new Map<string, WireGuardInterface>();
+        
+        const lines = _res.split('\n').filter(line => line.trim());
+        
+        for (const line of lines) {
+            const columns = line.split('\t');
+            
+            if (columns.length === 5) {
+                // Interface line: interface, private-key, public-key, listen-port, fwmark
+                const [name, privateKey, publicKey, listenPort, fwmark] = columns;
+                interfacesMap.set(name, {
+                    name,
+                    privateKey,
+                    publicKey,
+                    listenPort: parseInt(listenPort),
+                    fwmark,
+                    peers: []
+                });
+            } else if (columns.length === 9) {
+                // Peer line: interface, public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive
+                const [interfaceName, publicKey, presharedKey, endpoint, allowedIps, latestHandshake, transferRx, transferTx, persistentKeepalive] = columns;
+                
+                const iface = interfacesMap.get(interfaceName);
+                if (iface) {
+                    const now = Math.floor(Date.now() / 1000);
+                    const handshakeTimestamp = parseInt(latestHandshake);
+                    const timeSinceHandshake = now - handshakeTimestamp;
+                    
+                    iface.peers.push({
+                        publicKey,
+                        presharedKey,
+                        endpoint,
+                        allowedIps,
+                        latestHandshake: handshakeTimestamp,
+                        transferRx: parseInt(transferRx),
+                        transferTx: parseInt(transferTx),
+                        persistentKeepalive,
+                        active: handshakeTimestamp > 0 && timeSinceHandshake <= 180
+                    });
+                }
+            }
+        }
+        
+        _result.interfaces = Array.from(interfacesMap.values());
+        
+        return _result;
+    } catch (error) {
+        console.error('Error executing wg show all dump:', error);
+        throw error;
+    }
+}
+
+/**
+ * Načte všechny WireGuard konfigurace ze složky /etc/wireguard
+ * Prochází všechny .conf soubory a parsuje jejich obsah
+ * @returns Pole WireGuardConfig objektů s načtenými konfiguracemi
+ * @throws Error při problémech se čtením souborů nebo přístupem ke složce
+ */
+export async function loadWgConfiguration(): Promise<WireGuardConfig[]> {
+    const configDir = '/etc/wireguard';
+    const configs: WireGuardConfig[] = [];
+
+    try {
+        // Najít všechny .conf soubory
+        const files = await readdir(configDir);
+        const confFiles = files.filter(f => f.endsWith('.conf'));
+
+        // Zpracovat každý soubor
+        for (const filename of confFiles) {
+            const filePath = join(configDir, filename);
+            const content = await readFile(filePath, 'utf-8');
+            
+            const config = parseWireGuardConfig(filename, content);
+            configs.push(config);
+        }
+
+        return configs;
+    } catch (error) {
+        console.error('Error loading WireGuard configurations:', error);
+        throw error;
+    }
+}
+
+/**
+ * Generuje privátní a veřejný klíč pro WireGuard klienta
+ * Používá příkazy wg genkey a wg pubkey
+ * @returns Objekt s privateKey a publicKey v base64 formátu
+ */
+export async function generatePeerKeys(): Promise<{ publicKey: string; privateKey: string }> {
+    try {
+        // Vygenerujeme privátní klíč pomocí wg genkey
+        const { stdout: privateKey } = await execAsync('wg genkey');
+        const trimmedPrivateKey = privateKey.trim();
+        
+        // Z privátního klíče vygenerujeme veřejný klíč pomocí wg pubkey
+        const { stdout: publicKey } = await execAsync(`echo "${trimmedPrivateKey}" | wg pubkey`);
+        const trimmedPublicKey = publicKey.trim();
+        
+        return {
+            privateKey: trimmedPrivateKey,
+            publicKey: trimmedPublicKey
+        };
+    } catch (error) {
+        console.error('Error generating WireGuard keys:', error);
+        throw new Error('Failed to generate WireGuard keys. Make sure wireguard-tools are installed.');
+    }
 }
