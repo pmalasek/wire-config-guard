@@ -24,6 +24,15 @@ export default function Home() {
         >
           Zobrazit aktivní připojení WireGuard
         </button>
+        <button
+          onClick={async () => {
+            const result = await axios.get('/api/wg/active');
+            setActiveCons(JSON.stringify(result.data, null, 2));
+          }}
+          className="mb-32 rounded-full bg-blue-500 px-5 py-3 font-medium text-white hover:bg-blue-600"
+        >
+          Zobrazit aktivní připojení WireGuard
+        </button>
         {/* <pre>{privateKey} - {publicKey}</pre> */}
         {/* <pre>Moje Proměnná : {globalThis.mojePromenna}</pre> */}
         <pre>{activeCons}</pre>

@@ -155,15 +155,15 @@ function parseWireGuardConfig(filename: string, content: string): WireGuardConfi
 export async function activeConnections() {
     try {
         const { stdout: _res } = await execAsync('wg show all dump');
-        
+
         const _result: { interfaces: WireGuardInterface[] } = { interfaces: [] };
         const interfacesMap = new Map<string, WireGuardInterface>();
-        
+
         const lines = _res.split('\n').filter(line => line.trim());
-        
+
         for (const line of lines) {
             const columns = line.split('\t');
-            
+
             if (columns.length === 5) {
                 // Interface line: interface, private-key, public-key, listen-port, fwmark
                 const [name, privateKey, publicKey, listenPort, fwmark] = columns;
@@ -178,13 +178,13 @@ export async function activeConnections() {
             } else if (columns.length === 9) {
                 // Peer line: interface, public-key, preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx, transfer-tx, persistent-keepalive
                 const [interfaceName, publicKey, presharedKey, endpoint, allowedIps, latestHandshake, transferRx, transferTx, persistentKeepalive] = columns;
-                
+
                 const iface = interfacesMap.get(interfaceName);
                 if (iface) {
                     const now = Math.floor(Date.now() / 1000);
                     const handshakeTimestamp = parseInt(latestHandshake);
                     const timeSinceHandshake = now - handshakeTimestamp;
-                    
+
                     iface.peers.push({
                         publicKey,
                         presharedKey,
@@ -199,9 +199,9 @@ export async function activeConnections() {
                 }
             }
         }
-        
+
         _result.interfaces = Array.from(interfacesMap.values());
-        
+
         return _result;
     } catch (error) {
         console.error('Error executing wg show all dump:', error);
@@ -209,6 +209,21 @@ export async function activeConnections() {
     }
 }
 
+export async function activeInterfaces() {
+    const activeConns = await activeConnections();
+    const result = [];
+    for (const iface of activeConns.interfaces) {
+        result.push({
+            "name": iface.name,
+            "privateKey": iface.privateKey,
+            "publicKey": iface.publicKey,
+            "listenPort": iface.listenPort,
+            "fwmark": iface.fwmark,
+            "peers": []
+        })
+    }
+    return result;
+}
 /**
  * Načte všechny WireGuard konfigurace ze složky /etc/wireguard
  * Prochází všechny .conf soubory a parsuje jejich obsah
@@ -228,7 +243,7 @@ export async function loadWgConfiguration(): Promise<WireGuardConfig[]> {
         for (const filename of confFiles) {
             const filePath = join(configDir, filename);
             const content = await readFile(filePath, 'utf-8');
-            
+
             const config = parseWireGuardConfig(filename, content);
             configs.push(config);
         }
@@ -250,11 +265,11 @@ export async function generatePeerKeys(): Promise<{ publicKey: string; privateKe
         // Vygenerujeme privátní klíč pomocí wg genkey
         const { stdout: privateKey } = await execAsync('wg genkey');
         const trimmedPrivateKey = privateKey.trim();
-        
+
         // Z privátního klíče vygenerujeme veřejný klíč pomocí wg pubkey
         const { stdout: publicKey } = await execAsync(`echo "${trimmedPrivateKey}" | wg pubkey`);
         const trimmedPublicKey = publicKey.trim();
-        
+
         return {
             privateKey: trimmedPrivateKey,
             publicKey: trimmedPublicKey
@@ -262,5 +277,24 @@ export async function generatePeerKeys(): Promise<{ publicKey: string; privateKe
     } catch (error) {
         console.error('Error generating WireGuard keys:', error);
         throw new Error('Failed to generate WireGuard keys. Make sure wireguard-tools are installed.');
+    }
+}
+
+export async function restartWgServer() {
+    try {
+        await execAsync('wg-quick down wg0');
+        await execAsync('wg-quick up wg0');
+    } catch (error) {
+        console.error('Error restarting WireGuard server:', error);
+        throw new Error('Failed to restart WireGuard server. Make sure you have the necessary permissions.');
+    }
+}
+
+export async function getServerCredentials() {
+    return {
+        privateKey: process.env.WG_SERVER_PRIVATE_KEY || '',
+        publicKey: process.env.WG_SERVER_PUBLIC_KEY || '',
+        address: process.env.WG_SERVER_ADDRESS || '',
+        listenPort: parseInt(process.env.WG_SERVER_LISTEN_PORT || '51820', 10)
     }
 }
