@@ -11,8 +11,15 @@ export function proxy(request: NextRequest) {
     // Výpis URL pro debugging
     console.log('Proxy:', request.nextUrl.pathname);
     
-    // Pokračovat normálně
-    return NextResponse.next();
+    // Pokračovat normálně s povolenými CORS headers
+    const response = NextResponse.next();
+    
+    // Přidat CORS headers pro development
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return response;
 }
 
 /**
